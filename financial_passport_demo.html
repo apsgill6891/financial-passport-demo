@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financial Passport — Live Demo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Arial', sans-serif; background: #061F32; color: #fff; height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+
+  .stage { display: flex; align-items: center; justify-content: center; width: 100vw; height: 100vh; position: relative; }
+
+  /* Background gradient */
+  .bg { position: fixed; inset: 0; background: radial-gradient(ellipse at 30% 50%, #0a3a6b 0%, #061F32 60%); z-index: 0; }
+
+  /* Header */
+  .hdr { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; background: rgba(6,31,50,0.95); border-bottom: 1px solid rgba(0,167,242,0.3); }
+  .hdr-brand { font-size: 15px; font-weight: 700; color: #00A7F2; letter-spacing: 0.04em; }
+  .hdr-badge { font-size: 11px; color: rgba(255,255,255,0.5); background: rgba(0,167,242,0.12); border: 1px solid rgba(0,167,242,0.3); padding: 3px 10px; border-radius: 20px; }
+  .step-dots { display: flex; gap: 8px; align-items: center; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: all 0.3s; }
+  .dot.active { background: #00A7F2; transform: scale(1.3); }
+  .dot.done { background: rgba(0,167,242,0.5); }
+
+  /* Phone frame */
+  .phone-wrap { position: relative; z-index: 10; display: flex; align-items: center; gap: 40px; }
+  .phone { width: 280px; background: #0d1b2a; border-radius: 40px; border: 2px solid rgba(255,255,255,0.15); box-shadow: 0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,167,242,0.1); overflow: hidden; position: relative; }
+  .phone::before { content: ''; position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 80px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; z-index: 10; }
+  .phone-inner { padding-top: 28px; height: 560px; position: relative; overflow: hidden; }
+
+  /* Screens */
+  .screen { position: absolute; inset: 0; padding: 24px 18px 16px; opacity: 0; transform: translateX(30px); transition: all 0.5s cubic-bezier(0.4,0,0.2,1); pointer-events: none; }
+  .screen.active { opacity: 1; transform: translateX(0); pointer-events: all; }
+  .screen.out { opacity: 0; transform: translateX(-30px); }
+
+  /* Screen elements */
+  .screen-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .screen-sub { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 20px; }
+  .avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #00A7F2, #1C3CDF); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+  .verified-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(0,200,120,0.15); border: 1px solid rgba(0,200,120,0.4); color: #00C878; border-radius: 20px; padding: 2px 10px; font-size: 10px; font-weight: 600; margin-bottom: 16px; }
+  .score-card { background: rgba(0,167,242,0.1); border: 1px solid rgba(0,167,242,0.3); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+  .score-label { font-size: 9px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+  .score-row { display: flex; align-items: baseline; gap: 8px; }
+  .score-val { font-size: 28px; font-weight: 800; color: #00A7F2; }
+  .score-sub { font-size: 11px; color: rgba(255,255,255,0.5); }
+  .gfhs-grade { font-size: 48px; font-weight: 900; color: #F8BC3B; line-height: 1; }
+  .gfhs-label { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+  .dim-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .dim-label { font-size: 9px; color: rgba(255,255,255,0.5); }
+  .dim-val { font-size: 9px; color: #00A7F2; font-weight: 600; }
+  .bar-wrap { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; flex: 1; margin: 0 8px; }
+  .bar-fill { height: 100%; background: #00A7F2; border-radius: 2px; transition: width 1s ease; }
+  .section-hdr { font-size: 9px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.08em; margin: 14px 0 8px; }
+  .data-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+  .data-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+  .data-text { font-size: 10px; color: rgba(255,255,255,0.7); }
+  .data-check { margin-left: auto; font-size: 11px; color: #00C878; }
+  .consent-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: rgba(255,255,255,0.04); border-radius: 10px; margin-bottom: 8px; }
+  .consent-label { font-size: 10px; color: rgba(255,255,255,0.8); }
+  .toggle { width: 36px; height: 20px; background: #00A7F2; border-radius: 10px; position: relative; cursor: pointer; }
+  .toggle.off { background: rgba(255,255,255,0.2); }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: 0.2s; }
+  .toggle.off::after { left: 2px; }
+  .toggle:not(.off)::after { left: 18px; }
+  .inst-card { background: rgba(0,167,242,0.08); border: 1px solid rgba(0,167,242,0.2); border-radius: 12px; padding: 12px; margin-bottom: 8px; }
+  .inst-name { font-size: 11px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .inst-type { font-size: 9px; color: rgba(0,167,242,0.8); margin-bottom: 8px; }
+  .inst-shares { font-size: 9px; color: rgba(255,255,255,0.5); }
+  .share-pill { display: inline-block; background: rgba(0,167,242,0.15); border: 1px solid rgba(0,167,242,0.3); color: #00A7F2; border-radius: 20px; padding: 1px 7px; font-size: 8px; margin: 2px 2px 0 0; }
+  .share-pill.red { background: rgba(255,80,80,0.12); border-color: rgba(255,80,80,0.3); color: #ff6060; }
+  .success-icon { font-size: 36px; margin-bottom: 10px; }
+  .success-msg { font-size: 13px; font-weight: 700; color: #00C878; margin-bottom: 6px; }
+  .success-sub { font-size: 10px; color: rgba(255,255,255,0.5); line-height: 1.5; }
+  .progress-track { background: rgba(255,255,255,0.08); border-radius: 4px; height: 4px; margin: 12px 0; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #00A7F2, #00C878); border-radius: 4px; width: 0; transition: width 2s ease; }
+
+  /* Info panel next to phone */
+  .info-panel { width: 320px; }
+  .step-num { font-size: 60px; font-weight: 900; color: rgba(0,167,242,0.15); line-height: 1; margin-bottom: -8px; }
+  .step-title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .step-desc { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.7; margin-bottom: 20px; }
+  .step-highlight { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; background: rgba(0,167,242,0.08); border: 1px solid rgba(0,167,242,0.2); border-radius: 10px; padding: 10px 12px; }
+  .hl-icon { font-size: 16px; margin-top: 1px; }
+  .hl-text { font-size: 11px; color: rgba(255,255,255,0.7); line-height: 1.5; }
+  .hl-text strong { color: #00A7F2; font-weight: 600; }
+
+  /* CTA button */
+  .cta-btn { display: block; width: 100%; padding: 14px; background: #00A7F2; color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; transition: 0.2s; margin-top: 20px; letter-spacing: 0.02em; }
+  .cta-btn:hover { background: #0090d0; transform: translateY(-1px); }
+  .cta-btn:active { transform: translateY(0); }
+  .cta-btn.secondary { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
+  .cta-btn.secondary:hover { background: rgba(255,255,255,0.05); }
+
+  /* Progress bar at bottom */
+  .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; background: rgba(6,31,50,0.95); border-top: 1px solid rgba(0,167,242,0.2); padding: 10px 32px; display: flex; align-items: center; justify-content: space-between; }
+  .step-indicator { font-size: 11px; color: rgba(255,255,255,0.5); }
+  .step-indicator span { color: #00A7F2; font-weight: 700; }
+  .bottom-progress { flex: 1; margin: 0 24px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+  .bottom-progress-fill { height: 100%; background: #00A7F2; border-radius: 2px; transition: width 0.5s ease; }
+  .nav-btns { display: flex; gap: 8px; }
+  .nav-btn { padding: 6px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: #fff; font-size: 12px; cursor: pointer; transition: 0.2s; }
+  .nav-btn:hover { background: rgba(255,255,255,0.1); }
+  .nav-btn.primary-btn { background: #00A7F2; border-color: #00A7F2; font-weight: 600; }
+  .nav-btn.primary-btn:hover { background: #0090d0; }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .animate-in { animation: slideUp 0.5s ease forwards; }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+
+<header class="hdr">
+  <div class="hdr-brand">🛂 Financial Passport</div>
+  <div class="step-dots" id="dots"></div>
+  <div class="hdr-badge">LIVE DEMO  ·  RSM 2319H</div>
+</header>
+
+<div class="stage">
+  <div class="phone-wrap">
+    <div class="info-panel" id="infoPanel"></div>
+    <div class="phone">
+      <div class="phone-inner" id="phoneInner"></div>
+    </div>
+  </div>
+</div>
+
+<footer class="bottom-bar">
+  <div class="step-indicator">Step <span id="stepNum">1</span> of <span>5</span></div>
+  <div class="bottom-progress"><div class="bottom-progress-fill" id="bpFill" style="width:20%"></div></div>
+  <div class="nav-btns">
+    <button class="nav-btn" onclick="prev()">← Back</button>
+    <button class="nav-btn primary-btn" id="nextBtn" onclick="next()">Next →</button>
+  </div>
+</footer>
+
+<script>
+const steps = [
+  {
+    num: "01",
+    title: "Your financial\nidentity starts here",
+    desc: "Jordan moved from Toronto to New York for a Big Law position. His 812 Canadian credit score is invisible to US institutions. Financial Passport gives him back his financial identity.",
+    highlights: [
+      { icon: "🌍", text: "<strong>311M+ global migrants</strong> face this same problem — a lifetime of financial behaviour, invisible at the border." },
+      { icon: "⏱️", text: "Without Financial Passport, rebuilding credit takes <strong>2–5 years</strong>. With it: immediate." },
+    ],
+    cta: "Create Passport →",
+    screen: `
+      <div class="screen active" id="s0">
+        <div class="avatar">JO</div>
+        <div class="screen-title">Jordan Osei-Mensah</div>
+        <div class="screen-sub">Toronto, ON → New York, USA</div>
+        <div class="verified-badge">✓ Identity Verified</div>
+        <div class="section-hdr">Upload your financial data</div>
+        <div class="data-item"><div class="data-icon" style="background:rgba(0,167,242,0.15)">🏦</div><div class="data-text">Equifax Canada bureau pull</div><div class="data-check">✓</div></div>
+        <div class="data-item"><div class="data-icon" style="background:rgba(0,167,242,0.15)">💳</div><div class="data-text">Plaid CA — banking history</div><div class="data-check">✓</div></div>
+        <div class="data-item"><div class="data-icon" style="background:rgba(248,188,59,0.15)">📄</div><div class="data-text">Income & tax returns (CRA)</div><div class="data-check loading">⟳</div></div>
+        <div class="data-item" style="opacity:0.4"><div class="data-icon" style="background:rgba(255,255,255,0.06)">🏠</div><div class="data-text">Rent history — 60 months</div></div>
+        <div class="data-item" style="opacity:0.4"><div class="data-icon" style="background:rgba(255,255,255,0.06)">📊</div><div class="data-text">Investment & brokerage accounts</div></div>
+        <div style="margin-top:14px; background:rgba(0,167,242,0.08); border-radius:10px; padding:10px 12px;">
+          <div style="font-size:9px; color:rgba(255,255,255,0.4); margin-bottom:6px;">VERIFICATION PROGRESS</div>
+          <div class="progress-track"><div class="progress-fill" id="p1" style="width:0"></div></div>
+          <div style="font-size:9px; color:rgba(0,167,242,0.8)">Connecting to data sources...</div>
+        </div>
+      </div>
+    `
+  },
+  {
+    num: "02",
+    title: "GFHS Score\nGenerated",
+    desc: "After verification, Financial Passport calculates the Global Financial Health Score — a composite letter grade across 5 dimensions, independent of any national credit system.",
+    highlights: [
+      { icon: "🎯", text: "<strong>A–</strong> means Jordan's financial health is Excellent. His Canadian 812 score translates to ~780 FICO-equivalent." },
+      { icon: "🔒", text: "Score is <strong>owned by Jordan</strong>, not by any bureau. He decides who sees it and when." },
+    ],
+    cta: "Set Sharing Permissions →",
+    screen: `
+      <div class="screen active" id="s1">
+        <div class="verified-badge">✓ Passport Verified by FP Platform</div>
+        <div class="score-card">
+          <div class="score-label">Canadian Bureau Score</div>
+          <div class="score-row"><div class="score-val">812</div><div class="score-sub">Equifax CA</div></div>
+        </div>
+        <div class="score-card">
+          <div class="score-label">US FICO Equivalent</div>
+          <div class="score-row"><div class="score-val">~780</div><div class="score-sub">Corridor-calibrated model</div></div>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin:12px 0 4px;">
+          <div><div class="score-label">Global Financial Health Score</div><div class="gfhs-grade">A–</div><div class="gfhs-label">Excellent</div></div>
+          <div style="text-align:right; font-size:9px; color:rgba(255,255,255,0.4);">Updated<br>Jan 2026</div>
+        </div>
+        <div class="dim-row"><div class="dim-label">Payment Reliability</div><div class="bar-wrap"><div class="bar-fill" style="width:99%"></div></div><div class="dim-val">99.2%</div></div>
+        <div class="dim-row"><div class="dim-label">Income Stability</div><div class="bar-wrap"><div class="bar-fill" style="width:95%"></div></div><div class="dim-val">High</div></div>
+        <div class="dim-row"><div class="dim-label">Debt Quality</div><div class="bar-wrap"><div class="bar-fill" style="width:88%"></div></div><div class="dim-val">Tier 1</div></div>
+        <div class="dim-row"><div class="dim-label">Savings Buffer</div><div class="bar-wrap"><div class="bar-fill" style="width:84%"></div></div><div class="dim-val">8.4 mo</div></div>
+        <div class="dim-row"><div class="dim-label">Asset Ownership</div><div class="bar-wrap"><div class="bar-fill" style="width:76%"></div></div><div class="dim-val">Property</div></div>
+      </div>
+    `
+  },
+  {
+    num: "03",
+    title: "Granular consent\ncontrol",
+    desc: "Jordan controls exactly what each institution sees. He can share rent history with a landlord but hide his net worth. Attribute-level consent, revocable at any time.",
+    highlights: [
+      { icon: "🔐", text: "<strong>No consent = no access.</strong> Institutions cannot pull his data. He pushes it to them." },
+      { icon: "⚡", text: "Share <strong>only income</strong> with a landlord. Share <strong>full profile</strong> with a bank. Hide everything from anyone." },
+    ],
+    cta: "Share with Landlord →",
+    screen: `
+      <div class="screen active" id="s2">
+        <div class="screen-title">Consent Manager</div>
+        <div class="screen-sub" style="margin-bottom:14px">Sharing with: Greystar NYC Properties</div>
+        <div style="font-size:9px; color:#00C878; margin-bottom:10px">● Landlord — Apartment Application</div>
+        <div class="consent-row"><div class="consent-label">✓ Rent payment history</div><div class="toggle"></div></div>
+        <div class="consent-row"><div class="consent-label">✓ Income band (not exact)</div><div class="toggle"></div></div>
+        <div class="consent-row"><div class="consent-label">✓ GFHS letter grade</div><div class="toggle"></div></div>
+        <div class="consent-row"><div class="consent-label">✓ Payment reliability score</div><div class="toggle"></div></div>
+        <div class="consent-row"><div class="consent-label">✗ Net worth (hidden)</div><div class="toggle off"></div></div>
+        <div class="consent-row"><div class="consent-label">✗ Exact salary</div><div class="toggle off"></div></div>
+        <div class="consent-row"><div class="consent-label">✗ Investment accounts</div><div class="toggle off"></div></div>
+        <div style="margin-top:14px; padding:10px 12px; background:rgba(248,188,59,0.08); border:1px solid rgba(248,188,59,0.25); border-radius:10px;">
+          <div style="font-size:9px; color:#F8BC3B; font-weight:600; margin-bottom:3px">⚠ Access expires in 7 days</div>
+          <div style="font-size:9px; color:rgba(255,255,255,0.5)">Revoke anytime from dashboard</div>
+        </div>
+      </div>
+    `
+  },
+  {
+    num: "04",
+    title: "Landlord receives\nverified signal",
+    desc: "Greystar NYC receives a structured, verified report. Jordan doesn't exist as a blank slate anymore. His 60 months of on-time rent in Canada is visible, verified, and actionable.",
+    highlights: [
+      { icon: "🏠", text: "The landlord sees what they need: <strong>rent history, income, GFHS grade</strong>. Nothing more. They make their own tenancy call." },
+      { icon: "📊", text: "We provide verified intelligence — <strong>not an underwriting decision</strong>. Every institution keeps its own decision-making authority." },
+    ],
+    cta: "View Jordan's Application →",
+    screen: `
+      <div class="screen active" id="s3">
+        <div style="font-size:9px; color:rgba(255,255,255,0.4); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.08em">INSTITUTION VIEW — LANDLORD API</div>
+        <div class="inst-card">
+          <div class="inst-name">Jordan Osei-Mensah</div>
+          <div class="inst-type">🌍 Canada → United States · 2026 · Verified A–</div>
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <div style="flex:1; background:rgba(0,200,120,0.1); border:1px solid rgba(0,200,120,0.3); border-radius:8px; padding:8px; text-align:center;">
+              <div style="font-size:18px; font-weight:800; color:#00C878">99.2%</div>
+              <div style="font-size:8px; color:rgba(255,255,255,0.4)">Payment reliability</div>
+            </div>
+            <div style="flex:1; background:rgba(0,167,242,0.1); border:1px solid rgba(0,167,242,0.3); border-radius:8px; padding:8px; text-align:center;">
+              <div style="font-size:18px; font-weight:800; color:#00A7F2">60 mo</div>
+              <div style="font-size:8px; color:rgba(255,255,255,0.4)">On-time rent</div>
+            </div>
+          </div>
+          <div style="font-size:9px; color:rgba(255,255,255,0.5); margin-bottom:4px">DATA SHARED BY APPLICANT</div>
+          <div><span class="share-pill">Rent history</span><span class="share-pill">Income band</span><span class="share-pill">GFHS A–</span><span class="share-pill">Payment score</span></div>
+          <div style="margin-top:6px"><span class="share-pill red">Net worth hidden</span><span class="share-pill red">Salary hidden</span></div>
+        </div>
+        <div style="padding:10px 12px; background:rgba(0,200,120,0.08); border:1px solid rgba(0,200,120,0.25); border-radius:10px;">
+          <div style="font-size:9px; color:#00C878; font-weight:600; margin-bottom:3px">✓ Verified by FP Platform · ISO 27001</div>
+          <div style="font-size:9px; color:rgba(255,255,255,0.5)">Authenticated · Jan 15, 2026 · Consent expires Jan 22</div>
+        </div>
+        <div style="margin-top:10px; font-size:9px; color:rgba(255,255,255,0.3); text-align:center">Landlord makes their own tenancy decision</div>
+      </div>
+    `
+  },
+  {
+    num: "05",
+    title: "Financial identity\nthat travels with you",
+    desc: "Jordan's passport is accepted. His financial identity traveled with him. One platform — usable for housing, banking, telecom, employment, and more. Anywhere in the world.",
+    highlights: [
+      { icon: "🚀", text: "Financial Passport is building the <strong>LinkedIn for financial identity</strong> — your professional identity travels globally; so should your financial identity." },
+      { icon: "🌐", text: "Launch: CA→US. Then India→CA, Mexico→US, UK→UAE. <strong>6+ corridors by Year 4.</strong>" },
+    ],
+    cta: "↺ Restart Demo",
+    screen: `
+      <div class="screen active" id="s4">
+        <div style="text-align:center; padding-top:20px;">
+          <div class="success-icon">🎉</div>
+          <div class="success-msg">Application Approved!</div>
+          <div class="success-sub">345 West 70th Street, Unit 12B<br>New York, NY · Move-in Feb 1, 2026</div>
+          <div style="margin:18px 0; padding:14px; background:rgba(0,167,242,0.08); border:1px solid rgba(0,167,242,0.2); border-radius:14px; text-align:left;">
+            <div style="font-size:9px; color:rgba(255,255,255,0.4); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.08em">YOUR PASSPORT ALSO WORKS FOR</div>
+            <div class="data-item"><div class="data-icon" style="background:rgba(0,167,242,0.12)">🏦</div><div class="data-text">Bank account — no local history needed</div><div class="data-check">✓</div></div>
+            <div class="data-item"><div class="data-icon" style="background:rgba(0,167,242,0.12)">📱</div><div class="data-text">T-Mobile — no deposit required</div><div class="data-check">✓</div></div>
+            <div class="data-item"><div class="data-icon" style="background:rgba(0,167,242,0.12)">💼</div><div class="data-text">Employer financial background check</div><div class="data-check">✓</div></div>
+            <div class="data-item"><div class="data-icon" style="background:rgba(248,188,59,0.12)">🏗️</div><div class="data-text">Cross-border property investment</div><div class="data-check" style="color:#F8BC3B">→</div></div>
+          </div>
+          <div style="font-size:11px; color:rgba(255,255,255,0.6); line-height:1.6">
+            <span style="color:#00A7F2; font-weight:700">Financial Passport</span><br>
+            Your financial identity<br>travels with you.
+          </div>
+        </div>
+      </div>
+    `
+  },
+];
+
+let current = 0;
+
+function renderDots() {
+  const d = document.getElementById('dots');
+  d.innerHTML = steps.map((_, i) =>
+    `<div class="dot ${i === current ? 'active' : i < current ? 'done' : ''}"></div>`
+  ).join('');
+}
+
+function renderInfo() {
+  const p = document.getElementById('infoPanel');
+  const s = steps[current];
+  p.innerHTML = `
+    <div class="step-num">${s.num}</div>
+    <div class="step-title" style="white-space:pre-line">${s.title}</div>
+    <div class="step-desc">${s.desc}</div>
+    ${s.highlights.map(h => `
+      <div class="step-highlight">
+        <div class="hl-icon">${h.icon}</div>
+        <div class="hl-text">${h.text}</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderPhone() {
+  const inner = document.getElementById('phoneInner');
+  inner.innerHTML = steps[current].screen;
+  // Start progress animation on step 0
+  if (current === 0) {
+    setTimeout(() => {
+      const p1 = document.getElementById('p1');
+      if (p1) p1.style.width = '65%';
+    }, 400);
+  }
+}
+
+function updateBottom() {
+  document.getElementById('stepNum').textContent = current + 1;
+  document.getElementById('bpFill').style.width = ((current + 1) / steps.length * 100) + '%';
+  document.getElementById('nextBtn').textContent = current === steps.length - 1 ? '↺ Restart' : 'Next →';
+}
+
+function render() {
+  renderDots();
+  renderInfo();
+  renderPhone();
+  updateBottom();
+}
+
+function next() {
+  if (current === steps.length - 1) { current = 0; }
+  else { current++; }
+  render();
+}
+
+function prev() {
+  if (current > 0) { current--; render(); }
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+});
+
+render();
+</script>
+</body>
+</html>
